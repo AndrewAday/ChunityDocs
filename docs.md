@@ -1,5 +1,31 @@
 # Chunity Docs
+
 https://www.nime.org/proceedings/2018/nime2018_paper0024.pdf
+
+Chunity implemented as a [Native Audio Plugin](https://docs.unity3d.com/Manual/AudioMixerNativeAudioPlugin.html)
+- is this actually used? or are plugins replaced with chuckInstance?
+
+
+External Variable Types
+- Primitives
+- Events
+- UGens: The embedding host (Unity in our case) can fetch an external UGen’s most recent samples.
+
+libChucK
+- Chuck source separated into *core* and *host* 
+  - TODO Ge: what is difference?
+  - Core: parser, and chuck VM
+  - Host: ???
+    - Host can implement chuck by calling core functions.
+    - Other host ideas
+      - glslViewer or some other shader implementation of openGL
+        - other live coding tools too?
+      - Web ShucK: browser running webGL shader code + implementing chuck core (via web assembly?)
+        - Ideally in same browser / editor you can both write shader code and chuck code, and maybe shuck host can directly pipe values back and forth between GPU params and chuck external/globals via callbacks, without need for OSC
+        - 
+To address the inefficiency of including multiple ChucK VMs just to spatialize audio from multiple locations, we introduced `ChuckMainInstance` and `ChuckSubInstance`.
+- `ChuckMainInstance` fetches microphone input from Unity and advances time in its VM. 
+- `ChuckSubInstance` has a reference to a shared `ChuckMainInstance` and fetches its output samples from an external UGen in that VM (global Gain `__dac__`, buffered = true), perhaps spatializing the result along the way. This way, many spatialized ChucK scripts can all rely on the same VM and microphone, saving some computational overhead.
 
 
 **Major sections**
@@ -46,7 +72,8 @@ ChuckMainInstance : MonoBehaviour
   - sets up AudioSource and AudioMixerGroup
   - setup mic
 - OnAudioFilterRead()
-  - calls chuck.manager.ManualAudioCallback()
+  - calls chuck.manager.ManualAudioCallback() to advance time in VM?
+    - TODO Ge: what does the extern DLL `chuckManualAudioCallback(chuckID, inbuffer, outbuffer, numchannels)` do? how does this relate to advancing time in VM? what are the buffers populated with? 
 
 
 
@@ -55,7 +82,9 @@ ChuckSubInstance : MonoBehavior
   - TODO: ge, how does `setChuck<type>()` behave in Chuck native?
 - `GetInt()`
   - registers callback fn with chuck through appropriate DLL fn. (I believe) chuck native code will then call this callback, passing the current value of `variableName`
+  - from NIME paper: "The get operation requires the use of a callback because the embedding host often runs on a different thread than the audio thread"
 - TODO: whats the difference between IntCallback and NamedIntCallback? When do we use NamedCallbacks? on Chunity examples page, seems we do not use named callback, the callback fn only takes 1 param: the new value of the var in question e.g. `void MyGetIntCallbackFunction( long newValue )`
+- TODO: event handling
 - Awake()
   - assign chuckMainInstance
   - assign AudioSource
@@ -66,19 +95,41 @@ ChuckSubInstance : MonoBehavior
   - UpdateSpatialize();
 - OnAudioFilterRead()
   - chuckMainInstance.GetUGenSamples(`global Gain __dac__`, buffer, numfRames) --> Chuck.Manager.GetUgenSamples(chuckID, ...same params) --> DLL extern getGLobalUgenSamples(chuckID, name `__dac__`, buffer, numSamples)
-  - 
+
+
+
+*UGen.buffered*
+```
+int buffered( int val );
+    Set the unit generator's buffered operation mode, typically used externally from hosts that embed ChucK as a component. If
+true, the UGen stores a buffer of its most recent samples, which can be fetched using global variables in the host language.
+int buffered();
+
+```
 
 TypeSyncers
 - 
 
 
-Unity Audio API
-- Lookup
-  - AudioMixer
-  - AudioMixerGroup
-    - "ChuckSubInstanceDestination"
-    - "ChuckMainInstanceDestination"
-  - AudioSettings
-  - AudioSource
-  - OnAudioFilterRead()
-    - 
+[Unity Audio API](https://docs.unity3d.com/Manual/Audio.html)
+- AudioMixer
+- AudioMixerGroup
+- "ChuckSubInstanceDestination"
+- "ChuckMainInstanceDestination"
+- AudioSettings
+- [AudioSource](https://docs.unity3d.com/Manual/class-AudioSource.html)
+  - plays back AudioClip to the scene. Can be played to AudioListener or AudioMixer.
+  - controls spatialization/rolloff of sound 
+  - sets doppler effect level
+- AudioListener: seems to only be used by ChuckMainInstance in WebGL context
+  - WebGL does NOT support Audio Mixers
+  - [Audio in WebGL](https://docs.unity3d.com/Manual/webgl-audio.html)
+- [AudioMixer](https://docs.unity3d.com/Manual/AudioMixer.html): 
+- [OnAudioFilterRead()](https://docs.unity3d.com/ScriptReference/MonoBehaviour.OnAudioFilterRead.html)
+  - callback called everytime buffer of audio data is sent to filter (for buffsize = 1024 and SR=44kz this is every 20ms)
+  - can change the audio data before it goes on to the next filter in the chain, or being played as an audioSource
+  - called from the audio thread, NOT the main thread. so cannot access many Unity functions. 
+  - [Audio Filters](https://docs.unity3d.com/Manual/class-AudioEffect.html)
+
+
+
