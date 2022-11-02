@@ -1,4 +1,7 @@
 # Chunity Docs
+https://www.nime.org/proceedings/2018/nime2018_paper0024.pdf
+
+
 
 **Major sections**
 - Unity Audio
@@ -60,8 +63,11 @@ ChuckSubInstance : MonoBehavior
     - assign audioSource.clip = spactialCip Audio/1 what is this default?
   - run `global Gain __dac__ => blackhole; true => __dac__.buffered;`
     - TODO Ge: why do this? what does buffered attribute do?
+      - How does buffering work with multiple channels? 
   - UpdateSpatialize();
-
+- OnAudioFilterRead()
+  - chuckMainInstance.GetUGenSamples(`global Gain __dac__`, buffer, numfRames) --> Chuck.Manager.GetUgenSamples(chuckID, ...same params) --> DLL extern getGLobalUgenSamples(chuckID, name `__dac__`, buffer, numSamples)
+  - 
 
 TypeSyncers
 - 
