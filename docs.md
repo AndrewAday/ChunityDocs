@@ -2,18 +2,23 @@
 
 <https://www.nime.org/proceedings/2018/nime2018_paper0024.pdf>
 
-Chunity implemented as a [Native Audio Plugin](https://docs.unity3d.com/Manual/AudioMixerNativeAudioPlugin.html)
+An old way to implement Chunity is as a [Native Audio Plugin](https://docs.unity3d.com/Manual/AudioMixerNativeAudioPlugin.html)
+- [Relevant Code](https://github.com/ccrma/chunity/blob/main/src/Plugin_ChucK.cpp)
+  - Uses EffectData for hooking into the native unity mixer channel strip plugin API
+- From Jack: "it is still supported in that I never removed the option to do this from the code AFAIK, but it also hasn't been tested in a couple generations as I haven't come across anyone actually using it"
 
-- is this actually used? or are plugins replaced with chuckInstance?
+I'm documenting the plugin option for thoroughness sake, but by far the most common and recommended method now is through Chuck Main/SubInstances.
+
 
 External Variable Types
 
 - Primitives
 - Events
 - UGens: The embedding host (Unity in our case) can fetch an external UGen’s most recent samples.
+  - TODO Ge: to what extent are global ugens supported? what does that mean exactly?
 
-libChucK
 
+**libChucK rearchitecture project**
 - Chuck source separated into *core* and *host*
   - TODO Ge: what is difference?
   - Core: parser, and chuck VM
@@ -149,7 +154,6 @@ int buffered();
 ```
 
 TypeSyncers
--
 
 [Unity Audio API](https://docs.unity3d.com/Manual/Audio.html)
 
